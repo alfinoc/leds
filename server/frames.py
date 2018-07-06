@@ -1,12 +1,12 @@
-import time
 from neopixel import Adafruit_NeoPixel, Color
+from threading import Timer
 
 BLACK = Color(0, 0, 0)
 
 class StripController:
   def __init__(self):
-    self.ledCount_ = 100
-    self.height_ = 10
+    self.ledCount_ = 9 # 100
+    self.height_ = 3 # 10
     self.neopixel_ = Adafruit_NeoPixel(
         self.ledCount_,  # LED count
         18,  # LED pin
@@ -19,7 +19,7 @@ class StripController:
 
   def set(self, index, color):
     if index >= self.ledCount_:
-      raise 'setting out of bounds pixel', index
+      raise Exception('setting out of bounds pixel', index)
     self.neopixel_.setPixelColor(index, color)
 
   def show(self):
@@ -27,25 +27,15 @@ class StripController:
 
   def cleanUpGrid(self):
     width = self.ledCount_ / self.height_
-    return [[BLACK for j in range(0, width)] for i in range(0, self.height_)]
-
-class MockStripController:
-  def __init__(self):
-    pass
-
-  def set(self, index, color):
-    pass
-
-  def show(self):
-    pass
+    return [[BLACK] * width] * self.height_
 
 class Frame:
   def __init__(self, grid, interval):
     self.grid_ = grid
     self.interval_ = interval
 
-    if set([len(row) for row self.grid_]) != 1:
-      raise 'inconsistent row lengths in frame', self.grid_
+    if len(set([len(row) for row in self.grid_])) != 1:
+      raise Exception('inconsistent row lengths in frame', self.grid_)
 
   def interval(self):
     return self.interval_
@@ -55,38 +45,49 @@ class Frame:
     for row in self.grid_:
       for pixel in row:
         controller.set(index, pixel)
+        index += 1
     controller.show()
 
-  def cleanUp(controller):
-    return Frame(controller.cleanUpGrid()).write(controller)
-
 class PlayableFrames:
-  def __init__(self, frames):
+  def __init__(self, controller, frames):
+    self.controller_ = controller
     self.frames_ = frames
     self.currentFrameIndex_ = -1
     self.successorTimer_ = None
 
     # Clear the grid upon completion of all frames.
-    self.frames_append(Frame.cleanUp(controller))
+    self.frames_.append(Frame(controller.cleanUpGrid(), 0))
 
-  def play(self, controller):
+  def play(self):
+    self.playNextFrame_().start()
+
+  def playNextFrame_(self):
     # Bootstrap by playing first frame at no delay.
     if self.currentFrameIndex_ == -1:
       delay = 0
     else:
-      delay = self.frames_[self.currentFrameIndex_ - 1].getInterval()
-    return Timer(delay, self.writeAndEnqueSuccessor_(controller))
+      delay = self.frames_[self.currentFrameIndex_ - 1].interval()
+    return Timer(delay, self.writeAndEnqueSuccessor_)
 
-  def writeAndEnqueSuccessor_(self, controller):
+  def writeAndEnqueSuccessor_(self):
     self.currentFrameIndex_ += 1
-    self.frames_[self.currentFrameIndex_].write(controller)
+    self.frames_[self.currentFrameIndex_].write(self.controller_)
 
     # On the last frame, avoid enqueuing a successor.
-    if currentFrameIndex_ >= len(self.currentFrameIndex_) - 1:
-      self.successorTimer_ = None
+    if self.currentFrameIndex_ >= len(self.frames_) - 1:
+      self.reset_()
     else:
-      self.successorTimer_ = self.playNextFrame_(controller)
+      self.successorTimer_ = self.playNextFrame_()
+      self.successorTimer_.start()
 
-  def stop(self):
+  def stop(self, reset=False):
     if self.successorTimer_ != None:
       self.successorTimer_.cancel()
+      self.currentFrameIndex_ -= 1
+
+      if reset:
+        self.reset_()
+
+  def reset_(self):
+    self.currentFrameIndex_ = -1
+    self.successorTimer_ = None

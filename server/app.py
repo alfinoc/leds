@@ -1,6 +1,6 @@
 from flask import Flask, request, render_template, redirect, url_for
 from json import loads
-from frames import Frames
+from frames import PlayableFrames, Frame, StripController
 import time
 
 app = Flask(__name__)
@@ -15,7 +15,15 @@ def format_date(timestamp):
 
 @app.route('/play_frames')
 def playFrames():
-  return 'unimplemented'
+  controller = StripController()
+  frames = PlayableFrames(controller, [
+    Frame([[0,0,0], [0,0,0], [0,0,0]], 1),
+    Frame([[0,0,0], [1,0,0], [0,0,0]], 2),
+    Frame([[0,0,0], [1,1,0], [0,0,0]], 1),
+    Frame([[0,0,0], [1,1,1], [0,0,0]], 1)
+  ])
+  frames.play()
+  return 'playing'
 
 @app.route('/play_reset')
 def playPreset():
