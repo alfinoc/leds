@@ -1,37 +1,34 @@
-from flask import Flask, request, render_template, redirect, url_for
+from flask import Flask, request, render_template, redirect, url_for, g as global_context
 from json import loads
-from frames import PlayableFrames, Frame, StripController
+from frames import Player, Frame, StripController
 import time
 
+# TODO: make threadsafe
+player = Player(StripController())
 app = Flask(__name__)
-
-"""
-render_template('charts.html', charts=model, user=user)
-
-@app.template_filter('format_date')
-def format_date(timestamp):
-  return datetime.fromtimestamp(int(timestamp)).strftime('%b %d')
-"""
 
 @app.route('/play_frames')
 def playFrames():
-  controller = StripController()
-  frames = PlayableFrames(controller, [
+  base = [
     Frame([[0,0,0], [0,0,0], [0,0,0]], 1),
     Frame([[0,0,0], [1,0,0], [0,0,0]], 2),
     Frame([[0,0,0], [1,1,0], [0,0,0]], 1),
     Frame([[0,0,0], [1,1,1], [0,0,0]], 1)
-  ])
-  frames.play()
+  ]
+  reversed = base[:]
+  reversed.reverse()
+
+  player.play(base + reversed + base + reversed)
   return 'playing'
 
 @app.route('/play_reset')
 def playPreset():
   return 'unimplemented'
 
-@app.route('/reset')
+@app.route('/stop')
 def stop():
-  return 'unimplemented'
+  player.stop()
+  return 'stop'
 
 if __name__ == "__main__":
   app.run(debug=True)

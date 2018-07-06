@@ -48,46 +48,62 @@ class Frame:
         index += 1
     controller.show()
 
-class PlayableFrames:
-  def __init__(self, controller, frames):
+class Player:
+  def __init__(self, controller):
+    self.current_ = None
     self.controller_ = controller
-    self.frames_ = frames
-    self.currentFrameIndex_ = -1
-    self.successorTimer_ = None
 
-    # Clear the grid upon completion of all frames.
-    self.frames_.append(Frame(controller.cleanUpGrid(), 0))
+  def play(self, frames):
+    if self.current_ == None:
+      self.current_ = Player.PlayableFrames(self.controller_, frames)
+    self.current_.play()
 
-  def play(self):
-    self.playNextFrame_().start()
+  def stop(self):
+    self.current_.stop(True)
 
-  def playNextFrame_(self):
-    # Bootstrap by playing first frame at no delay.
-    if self.currentFrameIndex_ == -1:
-      delay = 0
-    else:
-      delay = self.frames_[self.currentFrameIndex_ - 1].interval()
-    return Timer(delay, self.writeAndEnqueSuccessor_)
+  def pause(self):
+    self.current_.stop()
 
-  def writeAndEnqueSuccessor_(self):
-    self.currentFrameIndex_ += 1
-    self.frames_[self.currentFrameIndex_].write(self.controller_)
+  class PlayableFrames:
+    def __init__(self, controller, frames):
+      self.controller_ = controller
+      self.frames_ = frames
+      self.currentFrameIndex_ = -1
+      self.successorTimer_ = None
 
-    # On the last frame, avoid enqueuing a successor.
-    if self.currentFrameIndex_ >= len(self.frames_) - 1:
-      self.reset_()
-    else:
-      self.successorTimer_ = self.playNextFrame_()
-      self.successorTimer_.start()
+      # Clear the grid upon completion of all frames.
+      self.frames_.append(Frame(controller.cleanUpGrid(), 0))
 
-  def stop(self, reset=False):
-    if self.successorTimer_ != None:
-      self.successorTimer_.cancel()
-      self.currentFrameIndex_ -= 1
+    def play(self):
+      self.playNextFrame_().start()
 
-      if reset:
+    def playNextFrame_(self):
+      # Bootstrap by playing first frame at no delay.
+      if self.currentFrameIndex_ == -1:
+        delay = 0
+      else:
+        delay = self.frames_[self.currentFrameIndex_ - 1].interval()
+      return Timer(delay, self.writeAndEnqueSuccessor_)
+
+    def writeAndEnqueSuccessor_(self):
+      self.currentFrameIndex_ += 1
+      self.frames_[self.currentFrameIndex_].write(self.controller_)
+
+      # On the last frame, avoid enqueuing a successor.
+      if self.currentFrameIndex_ >= len(self.frames_) - 1:
         self.reset_()
+      else:
+        self.successorTimer_ = self.playNextFrame_()
+        self.successorTimer_.start()
 
-  def reset_(self):
-    self.currentFrameIndex_ = -1
-    self.successorTimer_ = None
+    def stop(self, reset=False):
+      if self.successorTimer_ != None:
+        self.successorTimer_.cancel()
+        self.currentFrameIndex_ -= 1
+
+        if reset:
+          self.reset_()
+
+    def reset_(self):
+      self.currentFrameIndex_ = -1
+      self.successorTimer_ = None
