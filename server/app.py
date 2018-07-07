@@ -1,11 +1,22 @@
-from flask import Flask, request, render_template, redirect, url_for, g as global_context
+from flask import Flask, request, render_template, redirect, url_for, g as global_context, send_from_directory
 from json import loads
 from frames import Player, Frame, StripController
-import time
+from jinja2 import Environment, FileSystemLoader
 
-# TODO: make threadsafe
+PERMANENT_FRAME_INTERVAL = 60 * 60 # 1hr
+
 player = Player(StripController())
-app = Flask(__name__)
+app = Flask(__name__, static_url_path='/static')
+
+@app.route('/static/<path:path>')
+def sendStatic(path):
+  return send_from_directory('static', path)
+
+@app.route('/display_frame', methods=['POST'])
+def displayFrame():
+  player.stop()
+  player.play([Frame(loads(request.data)['frame'], PERMANENT_FRAME_INTERVAL)])
+  return 'ok'
 
 @app.route('/play_frames')
 def playFrames():

@@ -1,12 +1,12 @@
 from neopixel import Adafruit_NeoPixel, Color
-from threading import Timer
+from threading import Timer, Lock
 
 BLACK = Color(0, 0, 0)
 
 class StripController:
   def __init__(self):
-    self.ledCount_ = 9 # 100
-    self.height_ = 3 # 10
+    self.ledCount_ = 100
+    self.height_ = 10
     self.neopixel_ = Adafruit_NeoPixel(
         self.ledCount_,  # LED count
         18,  # LED pin
@@ -52,17 +52,23 @@ class Player:
   def __init__(self, controller):
     self.current_ = None
     self.controller_ = controller
+    self.lock_ = Lock()
 
   def play(self, frames):
-    if self.current_ == None:
-      self.current_ = Player.PlayableFrames(self.controller_, frames)
-    self.current_.play()
+    with self.lock_:
+      if self.current_ == None:
+        self.current_ = Player.PlayableFrames(self.controller_, frames)
+      self.current_.play()
 
   def stop(self):
-    self.current_.stop(True)
+    with self.lock_:
+      if self.current_ != None:
+        self.current_.stop(True)
 
   def pause(self):
-    self.current_.stop()
+    with self.lock_:
+      if self.current_ != None:
+        self.current_.stop()
 
   class PlayableFrames:
     def __init__(self, controller, frames):

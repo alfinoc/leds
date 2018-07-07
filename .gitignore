@@ -1,3 +1,4 @@
 notes/**
 **/*.pyc
 server/neopixel.py
+front/vanilla.js

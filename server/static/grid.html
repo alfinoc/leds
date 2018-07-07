@@ -1,0 +1,162 @@
+<html>
+<script src="vanilla.js"></script>
+<style type="text/css">
+body {
+  background-color: black;
+  margin: 0px;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  border: 2px solid white;
+  background-color: black;
+  height: 700px;
+  width: 700px;
+  margin: auto;
+  margin-top: 20px;
+  padding: 20px;
+}
+
+.row {
+  display: flex;
+  flex: 1;
+  flex-direction: row;
+}
+
+.cell {
+  display: flex;
+  flex: 1;
+  border: 1px solid white;
+  border-radius: 50%;
+  margin: 7px;
+}
+
+.cell.selected {
+  background-color: white;
+}
+
+</style>
+<body>
+  <div class="container"></div>
+</body>
+
+<script type="text/javascript">
+class Model {
+  constructor(size) {
+    this.model = []; 
+    for (let i = 0; i < size; i++) {
+      const row = [];
+      for (let j = 0; j < size; j++) {
+        row.push(0);
+      }
+      this.model.push(row);
+    }
+  }
+
+  isOn(i, j) {
+    return this.model[i] && this.model[i][j];
+  }
+
+  on(i, j) {
+    this.model[i][j] = 1;
+  }
+
+  off(i, j) {
+    this.model[i][j] = 0;
+  }
+
+  forEach(callback) {
+    this.model.forEach((row, i) => {
+      row.forEach((cell, j) => {
+        callback(cell, i, j);
+      });
+    });
+  }
+
+  initView(container) {
+    this.model.forEach((row, i) => {
+      const rowView = document.createElement('div');
+      rowView.classList.add('row');
+      container.appendChild(rowView);
+      row.forEach((cell, j) => {
+        const cellView = document.createElement('div');
+        cellView.classList.add('cell');
+        cellView.addEventListener('click', () => {
+          this.model[i][j] = this.model[i][j] == 0 ? 1 : 0;
+          this.flushView();
+          this.pushView();
+        });
+        rowView.appendChild(cellView);
+      });
+    });
+  }
+
+  flushView() {
+    const cells = document.querySelectorAll('.cell');
+    this.forEach((cell, i, j) => {
+      const cellView = cells[this.model.length * i + j];
+      if (cell) {
+        cellView.classList.add('selected');
+      } else {
+        cellView.classList.remove('selected');
+      }
+    });
+  }
+
+  pushView() {
+    var r = new XMLHttpRequest();
+    r.open('POST', '/display_frame', true);
+    r.onreadystatechange = function () {
+      if (r.readyState != 4 || r.status != 200) return;
+      console.log("Success: " + r.responseText);
+    };
+    console.log(JSON.stringify({'frame': this.model}));
+    r.send(JSON.stringify({'frame': this.model}));
+  }
+
+  conwayIter() {
+    const initial = this.clone();
+    initial.forEach((cell, i, j) => {
+      const liveNeighborCount = [
+        initial.isOn(i - 1, j - 1),
+        initial.isOn(i, j - 1),
+        initial.isOn(i - 1, j),
+        initial.isOn(i + 1, j + 1),
+        initial.isOn(i, j + 1),
+        initial.isOn(i + 1, j),
+        initial.isOn(i - 1, j + 1),
+        initial.isOn(i + 1, j - 1)
+      ].filter(c => c).length;
+      if (cell  // live
+          && (liveNeighborCount < 2  // under-population
+          || liveNeighborCount > 3)) {  // over-population
+        this.off(i, j);
+      } else if (!cell && liveNeighborCount == 3) {  // reproduction
+        this.on(i, j);
+      }
+    });
+    this.flushView();
+  }
+
+  clone() {
+    const copy = new Model(this.model.length);
+    this.forEach((cell, i, j) => copy.model[i][j] = cell);
+    return copy;
+  }
+}
+
+window.onload = () => {
+  const model = new Model(10);
+  model.initView(document.querySelector('.container'));
+  /*
+  setTimeout(
+    () => setInterval(
+      () => model.conwayIter(),
+      500),
+    5000);
+  */
+};
+
+</script>
+</html>
